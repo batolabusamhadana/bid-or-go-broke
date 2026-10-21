@@ -1,0 +1,53 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Bid or Go Broke · Host Console</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#f4eeff;--card:#fff;--tx:#1a0b3d;--mut:#6b5a99;--pur:#7a1fff;--cy:#0891b2;--bd:#cdb8ff;--or:#d97706}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b0620;--card:#160b3a;--tx:#f5f0ff;--mut:#b9a8e8;--pur:#8b2bff;--cy:#3de8ff;--bd:#4b2a99;--or:#ff9900}}
+:root[data-theme="dark"]{--bg:#0b0620;--card:#160b3a;--tx:#f5f0ff;--mut:#b9a8e8;--pur:#8b2bff;--cy:#3de8ff;--bd:#4b2a99;--or:#ff9900}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:Montserrat,Poppins,Segoe UI,Arial,sans-serif;padding:16px;max-width:1100px;margin:auto}
+h1{font-size:26px;margin:0}h2{font-size:13px;letter-spacing:.2em;color:var(--cy);margin:0 0 10px}.sub{color:var(--mut);font-size:12px;margin:2px 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}.card{background:var(--card);border:1.5px solid var(--bd);border-radius:14px;padding:14px}
+input,select,button{font:inherit;color:var(--tx);background:transparent;border:1.5px solid var(--bd);border-radius:8px;padding:8px}button{background:var(--pur);color:#fff;border:0;cursor:pointer;font-weight:700}button.g{background:transparent;color:var(--tx);border:1.5px solid var(--bd)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:6px 0}.big{font-size:56px;font-weight:800;color:var(--cy);line-height:1}.tag{color:var(--or);font-weight:700;font-size:12px}
+.team{display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid var(--bd)}.cc{color:var(--cy);font-weight:800}.over{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:13px}td,th{border:1px solid var(--bd);padding:5px;text-align:left}
+</style></head><body>
+<h1>BID OR GO BROKE</h1><p class="sub">AWS Student Builder Group · Birzeit University · DevFest BZU — host console. All credits and prices are fictional.</p>
+<div class="grid">
+<div class="card"><h2>TEAMS &amp; CREDITS</h2><div id="teams"></div><div class="row"><label>Number of teams <select id="n" onchange="st.n=+this.value;render()"><option>2</option><option>3</option><option>4</option></select></label></div><p class="sub">Choose 2 to 4 teams and rename them before you start.</p><div id="names" class="row"></div><button onclick="newGame()">Start New Game</button></div>
+<div class="card"><h2>SCENARIO</h2><div id="scn" style="min-height:150px">Press Draw to reveal.</div><div class="row"><button onclick="draw()">Draw scenario</button></div></div>
+<div class="card"><h2>TIMER</h2><div class="big" id="tm">10</div><div class="row"><button onclick="tstart()">Start / reset 10s</button><button class="g" onclick="tstop()">Stop</button></div></div>
+</div>
+<div class="card" style="margin-top:14px"><h2 id="ah">AUCTION</h2><div id="svc"></div>
+<div class="row"><label>Winner <select id="w"></select></label><label>Price <input id="wp" type="number" min="0" style="width:80px"></label><button class="g" onclick="bump(2)">+2</button><button class="g" onclick="bump(-2)">-2</button></div>
+<div class="row"><label>Runner-up (2nd copy) <select id="r"></select></label><label>Price <input id="rp" type="number" min="0" style="width:80px"></label></div>
+<div class="row"><button onclick="sell()">Record sale &amp; next card</button><button class="g" onclick="skip()">No bids / skip</button><span id="msg" class="tag"></span></div></div>
+<div class="card over" style="margin-top:14px"><h2>PURCHASE LOG</h2><table id="log"></table></div>
+<script>
+const S=[["Amazon EC2","Compute","A virtual computer in the cloud.",20],["Amazon S3","Object Storage","A giant online locker for files.",10],["AWS Lambda","Serverless","Runs code only when needed.",15],["Amazon RDS","Relational DB","Tidy linked tables.",25],["Amazon DynamoDB","NoSQL DB","Super-fast simple data.",20],["Amazon CloudFront","Content Delivery","Content close to users.",15],["Amazon Route 53","DNS","Turns names into addresses.",10],["Amazon Cognito","Login","Sign-up and sign-in.",10]];
+const SC=[["ShopEasy","Online Shopping Platform","Run the site · Database · Photo storage","Friday flash sale = spikes!"],["SnapShare","Photo-Sharing App","Run the app · Photo storage · Database","Far-away users load slowly."],["CampusReg","Student Registration","Run it · Linked-records DB · Secure login","Everyone registers at 9:00."],["FlashTix","Ticket Flash Sale","Run it · Fast DB · Fast delivery","10,000 fans in 10 seconds!"],["StudyBuddy","Notes Sharing","Run it · File storage · Secure login","Only classmates allowed."],["CampusRide","Ride Tracker","Run it · Fast DB · Secure login","Tiny updates every second."],["TinyBlog","Student Blog","Host pages · Fast delivery · Web address","Simple can win."],["GameLeague","Leaderboard Game","Run it · Fast DB · Secure login","Scores change constantly."]];
+let st={t:["Team 1","Team 2","Team 3","Team 4"].map(n=>({n,c:100,k:0})),i:0,log:[]},iv=null;
+const $=id=>document.getElementById(id);
+try{const x=localStorage.getItem('bogb');if(x)st=JSON.parse(x)}catch(e){}
+function save(){try{localStorage.setItem('bogb',JSON.stringify(st))}catch(e){}}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+function render(){st.n=st.n||4;$('n').value=st.n;$('teams').innerHTML=st.t.slice(0,st.n).map(t=>`<div class="team"><span>${esc(t.n)}</span><span><span class="cc">${t.c} CC</span> · ${t.k}/4 cards</span></div>`).join('');
+$('names').innerHTML=st.t.slice(0,st.n).map((t,j)=>`<input value="${esc(t.n)}" onchange="st.t[${j}].n=this.value;render()" style="width:110px">`).join('');
+const o='<option value="">—</option>'+st.t.slice(0,st.n).map((t,j)=>`<option value="${j}">${esc(t.n)}</option>`).join('');$('w').innerHTML=o;$('r').innerHTML=o;
+const d=S[st.i];$('ah').textContent=d?`AUCTION · CARD ${st.i+1} OF 8`:'AUCTION COMPLETE';
+$('svc').innerHTML=d?`<div class="big" style="font-size:30px">${d[0]}</div><div class="tag">${d[1]} · START ${d[3]} CC</div><p>${d[2]}</p>`:'<p>All cards auctioned. Score builds with the host sheet.</p>';
+if(d&&!$('wp').value)$('wp').value=d[3];
+$('log').innerHTML='<tr><th>Service</th><th>Winner</th><th>Price</th><th>2nd copy</th><th>Price</th></tr>'+st.log.map(l=>`<tr><td>${esc(l[0])}</td><td>${esc(l[1])}</td><td>${l[2]}</td><td>${esc(l[3])}</td><td>${l[4]}</td></tr>`).join('');save()}
+function bump(n){$('wp').value=Math.max(0,(+$('wp').value||0)+n);tstart()}
+function tstart(){clearInterval(iv);let n=10;$('tm').textContent=n;iv=setInterval(()=>{n--;$('tm').textContent=n;if(n<=0){clearInterval(iv);$('tm').textContent='SOLD!'}},1000)}
+function tstop(){clearInterval(iv);$('tm').textContent='10'}
+function buy(j,p){const t=st.t[j];if(t.k>=4)return t.n+' already has 4 cards.';if(p>t.c)return t.n+' only has '+t.c+' CC.';if(p<S[st.i][3])return 'Price is below the start price.';t.c-=p;t.k++;return''}
+function sell(){const d=S[st.i];if(!d)return;const w=$('w').value,r=$('r').value,wp=+$('wp').value,rp=+$('rp').value;$('msg').textContent='';
+if(w==='')return $('msg').textContent='Pick a winner (or skip).';let e=buy(+w,wp);if(e)return $('msg').textContent=e;
+let rn='',rpp='';if(r!==''&&r!==w){e=buy(+r,rp);if(e){st.t[+w].c+=wp;st.t[+w].k--;return $('msg').textContent=e}rn=st.t[+r].n;rpp=rp}
+st.log.push([d[0],st.t[+w].n,wp,rn,rpp]);next()}
+function skip(){const d=S[st.i];if(d)st.log.push([d[0],'no bids','','','']);next()}
+function next(){st.i++;$('wp').value='';$('rp').value='';tstop();render()}
+function draw(){const s=SC[Math.floor(Math.random()*SC.length)];$('scn').innerHTML=`<div class="big" style="font-size:28px">${s[0]}</div><div class="tag">${s[1]}</div><p><b>Must have:</b> ${s[2]}</p><p class="sub">Hint: ${s[3]} · 100 CC · max 4 cards</p>`}
+function newGame(){st.t.forEach(t=>{t.c=100;t.k=0});st.i=0;st.log=[];$('wp').value='';render()}
+render();
+</script></body></html>
